@@ -4,10 +4,16 @@ This guide documents the step-by-step process for deploying the ITLX token on NE
 
 ## Prerequisites
 
-- NEAR CLI installed
+- NEAR CLI RS installed (new Rust-based CLI)
 - Rust and Cargo installed
 - `wasm-opt` installed for WebAssembly optimization
 - A NEAR testnet account with sufficient balance
+- Ledger device (optional, for secure deployment)
+
+## Create a new NEAR testnet account
+
+```bash
+near account create-account sponsor-by-faucet-service intellex_contract_owner.testnet use-ledger --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''/0'\''/1'\''' network-config testnet create
 
 ## Step 1: Build the Contract
 
@@ -65,57 +71,50 @@ git commit -m "Update metadata.json"
 git push
 ```
 
-## Step 4: Deploy the Contract
+## Step 4: Deploy and Initialize the Contract
 
-1. Delete existing contract state if needed:
+### Using Ledger (Recommended)
+
+Deploy and initialize the contract using your Ledger device:
+
 ```bash
-near delete itlx-token.intellex_protocol_activators_1.testnet intellex_protocol_activators_1.testnet
+near contract deploy intellex_contract_owner.testnet use-file ./target/wasm32-unknown-unknown/release/fungible_token.wasm with-init-call new_default_meta json-args '{"owner_id": "intellex_contract_owner.testnet", "total_supply": "1000000000000000000000000000000000"}' prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-ledger --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''/0'\''/1'\''' send
 ```
 
-2. Create a new account for the contract:
+Replace `ACCOUNT_ID` with your account (e.g., `intellex_contract_owner.testnet`).
+
+When prompted, enter your Ledger HD path (default is usually `m/44'/397'/0'/0'/1'`).
+
+### Using Access Keys (Alternative)
+
+If not using a Ledger, you can deploy using your access keys:
+
 ```bash
-near create-account itlx-token.intellex_protocol_activators_1.testnet --masterAccount intellex_protocol_activators_1.testnet --initialBalance 5
+near contract deploy ACCOUNT_ID use-file ./target/wasm32-unknown-unknown/release/fungible_token.wasm \
+  with-init-call new_default_meta \
+  json-args '{"owner_id": "ACCOUNT_ID", "total_supply": "1000000000000000000000000000000000"}' \
+  prepaid-gas '100 TeraGas' \
+  attached-deposit '0 NEAR' \
+  network-config testnet \
+  sign-with-access-key-file \
+  send
 ```
 
-3. Deploy the contract:
-```bash
-near deploy itlx-token.intellex_protocol_activators_1.testnet target/wasm32-unknown-unknown/release/fungible_token.wasm --force
-```
-
-## Step 5: Initialize the Contract
-
-Initialize the contract with the prepared metadata (replace YOUR_CALCULATED_HASH with the actual hash from step 3.2):
-```bash
-near call itlx-token.intellex_protocol_activators_1.testnet new '{
-    "owner_id": "intellex_protocol_activators_1.testnet",
-    "total_supply": "1000000000000000000000000000000000",
-    "metadata": {
-        "spec": "ft-1.0.0",
-        "name": "Intellex AI Protocol Token",
-        "symbol": "ITLX",
-        "icon": "YOUR_ICON_HERE",
-        "reference": "https://raw.githubusercontent.com/brainstems/itlx_nep141_token/refs/heads/master/metadata.json",
-        "reference_hash": "YOUR_CALCULATED_HASH",
-        "decimals": 24
-    }
-}' --accountId intellex_protocol_activators_1.testnet
-```
-
-## Step 6: Verify Deployment
+## Step 5: Verify Deployment
 
 1. Check the total supply:
 ```bash
-near view itlx-token.intellex_protocol_activators_1.testnet ft_total_supply
+near contract call-function as-read-only ACCOUNT_ID ft_total_supply json-args '{}' network-config testnet
 ```
 
 2. Verify metadata:
 ```bash
-near view itlx-token.intellex_protocol_activators_1.testnet ft_metadata
+near contract call-function as-read-only ACCOUNT_ID ft_metadata json-args '{}' network-config testnet
 ```
 
 3. Check owner's balance:
 ```bash
-near view itlx-token.intellex_protocol_activators_1.testnet ft_balance_of '{"account_id": "intellex_protocol_activators_1.testnet"}'
+near contract call-function as-read-only ACCOUNT_ID ft_balance_of json-args '{"account_id": "ACCOUNT_ID"}' network-config testnet
 ```
 
 ## Important Notes
@@ -145,4 +144,9 @@ near view itlx-token.intellex_protocol_activators_1.testnet ft_balance_of '{"acc
 
 2. If the total supply appears incorrect:
    - Remember to include all 24 decimal places in the total_supply parameter
-   - The display amount will be 1,000,000,000 but the actual parameter needs all zeros 
+   - The display amount will be 1,000,000,000 but the actual parameter needs all zeros
+
+3. If using Ledger:
+   - Make sure your Ledger device is connected and unlocked
+   - The NEAR app is open on your Ledger
+   - The correct HD path is used (usually `m/44'/397'/0'/0'/1'`) 

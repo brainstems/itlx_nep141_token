@@ -87,7 +87,7 @@ async fn storage_deposit_minimal_deposit() -> anyhow::Result<()> {
     // new_account is charged the transaction fee, so it should loose a bit more than minimal_deposit
     assert!(new_account_balance_diff > minimal_deposit);
     assert!(
-        new_account_balance_diff < minimal_deposit.saturating_add(NearToken::from_millinear(1))
+        new_account_balance_diff < minimal_deposit.saturating_add(NearToken::from_near(1))
     );
 
     let contract_balance_diff = ft_contract
@@ -198,7 +198,7 @@ async fn storage_deposit_refunds_excessive_deposit() -> anyhow::Result<()> {
     // new_account is charged the transaction fee, so it should loose a bit more than minimal_deposit
     assert!(new_account_balance_diff > minimal_deposit);
     assert!(
-        new_account_balance_diff < minimal_deposit.saturating_add(NearToken::from_millinear(1))
+        new_account_balance_diff < minimal_deposit.saturating_add(NearToken::from_near(1))
     );
 
     let contract_balance_diff = ft_contract
