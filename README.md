@@ -1,3 +1,37 @@
+# ITLX Token
+
+The Intellex AI Protocol Token (ITLX) is a NEP-141 fungible token on the NEAR Protocol.
+
+## Token Details
+
+- **Name**: Intellex AI Protocol Token
+- **Symbol**: ITLX
+- **Decimals**: 24
+- **Total Supply**: 1,000,000,000 ITLX
+- **Standard**: NEP-141 (NEAR Fungible Token Standard)
+
+## Links
+
+- Website: https://intellex.xyz
+- Documentation: https://docs.intellex.xyz
+- Whitepaper: https://intellex.xyz/whitepaper
+
+## Social Media
+
+- Twitter: https://twitter.com/intellex_ai
+- Telegram: https://t.me/intellex_ai
+- GitHub: https://github.com/intellex-ai
+- Medium: https://medium.com/@intellex
+
+## Contract Addresses
+
+### Testnet
+- Token Contract: `itlx-token.intellex_protocol_activators_1.testnet`
+
+## Description
+
+Intellex AI Protocol - Decentralized AI Infrastructure
+
 Fungible Token (FT) Example 👋 
 
 [![](https://img.shields.io/badge/⋈%20Examples-Basics-green)](https://docs.near.org/tutorials/welcome)
