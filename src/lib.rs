@@ -233,12 +233,15 @@ mod tests {
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::{testing_env, VMContext};
 
+    const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
+
     fn get_context(predecessor_account_id: AccountId) -> VMContext {
         let mut builder = VMContextBuilder::new();
         builder
             .current_account_id(accounts(0))
             .signer_account_id(predecessor_account_id.clone())
-            .predecessor_account_id(predecessor_account_id);
+            .predecessor_account_id(predecessor_account_id)
+            .attached_deposit(ONE_YOCTO);
         builder.build()
     }
 
@@ -251,6 +254,20 @@ mod tests {
         // Set the session vault ID
         contract.set_session_vault_id(accounts(3));
         
+        // Register test accounts to receive tokens
+        testing_env!(VMContextBuilder::new()
+            .current_account_id(accounts(0))
+            .predecessor_account_id(accounts(0))
+            .signer_account_id(accounts(0))
+            .attached_deposit(NearToken::from_near(10))
+            .build());
+            
+        contract.storage_deposit(Some(accounts(1)), None);
+        contract.storage_deposit(Some(accounts(2)), None);
+        
+        // Give tokens to account(1) for testing
+        contract.internal_transfer(&accounts(0), &accounts(1), 1_000_000, None);
+        
         (context, contract)
     }
 
@@ -260,6 +277,7 @@ mod tests {
         
         // Set predecessor as account(1) who has tokens
         context.predecessor_account_id = accounts(1);
+        context.attached_deposit = ONE_YOCTO;
         testing_env!(context.clone());
         
         // Test normal transfer to account(2)
@@ -277,6 +295,7 @@ mod tests {
         
         // Set predecessor as account(1) who has tokens
         context.predecessor_account_id = accounts(1);
+        context.attached_deposit = ONE_YOCTO;
         testing_env!(context.clone());
         
         // This should panic as direct transfers to vault are not allowed
@@ -289,6 +308,7 @@ mod tests {
         
         // Set predecessor as account(1) who has tokens
         context.predecessor_account_id = accounts(1);
+        context.attached_deposit = ONE_YOCTO;
         testing_env!(context.clone());
         
         // Mock successful ft_transfer_call 
@@ -309,6 +329,7 @@ mod tests {
         
         // Set predecessor as account(1) who has tokens
         context.predecessor_account_id = accounts(1);
+        context.attached_deposit = ONE_YOCTO;
         testing_env!(context.clone());
         
         // This should work since no vault is configured
@@ -320,7 +341,7 @@ mod tests {
     }
     
     #[test]
-    #[should_panic(expected = "Must be owner")]
+    #[should_panic(expected = "Method can only be called by the owner")]
     fn test_only_owner_can_set_vault() {
         let (mut context, mut contract) = setup_contract();
         
