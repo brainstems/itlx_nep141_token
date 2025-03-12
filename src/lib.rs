@@ -26,11 +26,11 @@ use near_contract_standards::storage_management::{
 };
 use near_sdk::borsh::BorshSerialize;
 use near_sdk::collections::LazyOption;
-use near_sdk::json_types::U128;
 use near_sdk::json_types::Base64VecU8;
+use near_sdk::json_types::U128;
 use near_sdk::{
     env, log, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
-}; 
+};
 
 const DATA_IMAGE_SVG_ITLX_ICON: &str = "data:image/svg+xml,%3Csvg version='1.0' xmlns='http://www.w3.org/2000/svg' width='721.000000pt' height='399.000000pt' viewBox='0 0 721.000000 399.000000' preserveAspectRatio='xMidYMid meet'%3E%3Cg transform='translate(0.000000,399.000000) scale(0.100000,-0.100000)' fill='%23000000' stroke='none'%3E%3Cpath d='M0 1995 l0 -1995 3605 0 3605 0 0 1995 0 1995 -3605 0 -3605 0 0 -1995z m2888 1200 c110 -22 190 -64 252 -132 183 -200 178 -507 -15 -830 -75 -126 -101 -152 -50 -49 163 327 192 597 83 769 -58 91 -160 160 -277 187 -81 19 -231 15 -351 -10 -134 -27 -260 -74 -438 -161 l-143 -71 46 -50 c57 -63 109 -151 137 -231 32 -89 32 -263 1 -362 -70 -221 -249 -381 -473 -421 -129 -23 -268 -7 -325 38 -34 27 -65 92 -65 138 0 83 188 426 362 660 l33 45 -64 -50 c-342 -266 -660 -644 -817 -970 -168 -350 -171 -585 -9 -734 65 -59 135 -87 243 -100 307 -34 733 104 1261 408 60 34 45 14 -42 -57 -438 -358 -1180 -536 -1521 -365 -69 34 -140 111 -167 181 -34 85 -32 269 4 405 66 249 202 520 394 786 9 12 8 31 -3 81 -18 85 -17 229 1 309 38 159 150 298 298 370 178 87 378 93 570 16 l68 -28 97 46 c345 161 680 228 910 182z'/%3E%3C/g%3E%3C/svg%3E";
 
@@ -97,6 +97,13 @@ impl Contract {
 impl FungibleTokenCore for Contract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
+        let contract_id: AccountId = near_sdk::env::current_account_id();
+        if receiver_id
+            .as_str()
+            .eq_ignore_ascii_case(contract_id.as_str())
+        {
+            env::panic_str("ERR_RECIPIENT_CANNOT_BE_TOKEN_CONTRACT");
+        }
         self.token.ft_transfer(receiver_id, amount, memo)
     }
 
