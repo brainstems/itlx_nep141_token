@@ -61,7 +61,7 @@ pub async fn init_accounts(root: &Account) -> anyhow::Result<(Account, Account, 
         .await?
         .into_result()?;
 
-    return Ok((alice, bob, charlie, dave));
+    Ok((alice, bob, charlie, dave))
 }
 
 pub async fn init_contracts(
@@ -98,7 +98,7 @@ pub async fn init_contracts(
         .await?;
     assert!(res.is_success());
 
-    return Ok((ft_contract, defi_contract));
+    Ok((ft_contract, defi_contract))
 }
 
 pub async fn register_user(contract: &Contract, account_id: &AccountId) -> anyhow::Result<()> {
