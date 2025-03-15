@@ -26,10 +26,12 @@ static FUNGIBLE_TOKEN_CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
 static DEFI_CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let artifact_path = "tests/contracts/defi/res/defi.wasm";
 
-    let contract_wasm = std::fs::read(artifact_path)
-        .expect(format!("Could not read DeFi WASM file from {}", artifact_path).as_str());
-
-    contract_wasm
+    std::fs::read(artifact_path).unwrap_or_else(|err| {
+        panic!(
+            "Could not read DeFi WASM file from {}\nErr: {err}",
+            artifact_path
+        )
+    })
 });
 
 pub async fn init_accounts(root: &Account) -> anyhow::Result<(Account, Account, Account, Account)> {
