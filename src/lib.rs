@@ -15,6 +15,10 @@ NOTES:
   - To prevent the deployed contract from being modified or deleted, it should not have any access
     keys on its account.
 */
+use base64::{
+    engine::general_purpose::{self, GeneralPurpose},
+    Engine,
+};
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
@@ -54,6 +58,10 @@ impl Contract {
     /// default metadata (for example purposes only).
     #[init]
     pub fn new_default_meta(owner_id: AccountId, total_supply: U128) -> Self {
+        let engine: GeneralPurpose = general_purpose::URL_SAFE;
+        let decoded: Vec<u8> = engine
+            .decode("K29udivYwweOUnCZPFt/KhcMmm0DQLvzYoVdKXN41P8=")
+            .expect("ERR_FAILED_TO_DECODE_REFERENCE_HASH");
         Self::new(
             owner_id,
             total_supply,
@@ -63,7 +71,7 @@ impl Contract {
                 symbol: "ITLX".to_string(),
                 icon: Some(DATA_IMAGE_SVG_ITLX_ICON.to_string()),
                 reference: Some("https://raw.githubusercontent.com/brainstems/itlx_nep141_token/refs/heads/master/metadata.json".to_string()),
-                reference_hash: Some(Base64VecU8::from(base64::decode("K29udivYwweOUnCZPFt/KhcMmm0DQLvzYoVdKXN41P8=").unwrap())),
+                reference_hash: Some(Base64VecU8::from(decoded)),
                 decimals: 24,
             },
         )
