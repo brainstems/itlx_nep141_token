@@ -15,15 +15,12 @@ static FUNGIBLE_TOKEN_CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     })
     .expect("Could not compile Fungible Token contract for tests");
 
-    let contract_wasm = std::fs::read(&artifact.path).expect(
-        format!(
-            "Could not read Fungible Token WASM file from {}",
-            artifact.path
+    std::fs::read(&artifact.path).unwrap_or_else(|err| {
+        panic!(
+            "Could not read Fungible Token WASM file from {}\nErr: {err}",
+            artifact.path,
         )
-        .as_str(),
-    );
-
-    contract_wasm
+    })
 });
 
 static DEFI_CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
