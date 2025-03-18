@@ -81,7 +81,6 @@ impl Contract {
     /// the given fungible token metadata.
     #[init]
     pub fn new(owner_id: AccountId, total_supply: U128, metadata: FungibleTokenMetadata) -> Self {
-        require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
         let mut this = Self {
             token: FungibleToken::new(StorageKey::FungibleToken),
