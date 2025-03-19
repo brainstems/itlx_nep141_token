@@ -43,6 +43,86 @@ async fn simple_transfer() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Set session_vault_id, then attempt to transfer to it using ft_transfer
+#[tokio::test]
+async fn transfer_to_session_vault() -> anyhow::Result<()> {
+    // Create balance variables
+    let initial_balance = U128::from(NearToken::from_near(10000).as_yoctonear());
+    let transfer_amount = U128::from(NearToken::from_near(100).as_yoctonear());
+
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    // Considering Alice to be session_vault
+    let (session_vault, _, _, _) = init_accounts(&root).await?;
+    let (ft_contract, _) = init_contracts(&worker, initial_balance, &session_vault).await?;
+
+    let res = ft_contract
+        .call("set_session_vault_id")
+        .args_json((session_vault.id(),))
+        .max_gas()
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let res = ft_contract
+        .call("ft_transfer")
+        .args_json((session_vault.id(), transfer_amount, Option::<bool>::None))
+        .max_gas()
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    Ok(())
+}
+
+/// Set session_vault_id, but attempt to transfer to another account to make sure it still works properly
+#[tokio::test]
+async fn transfer_not_to_session_vault() -> anyhow::Result<()> {
+    // Create balance variables
+    let initial_balance = U128::from(NearToken::from_near(10000).as_yoctonear());
+    let transfer_amount = U128::from(NearToken::from_near(100).as_yoctonear());
+
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    // Considering bob to be session_vault
+    let (alice, session_vault, _, _) = init_accounts(&root).await?;
+    let (ft_contract, _) = init_contracts(&worker, initial_balance, &alice).await?;
+
+    let res = ft_contract
+        .call("set_session_vault_id")
+        .args_json((session_vault.id(),))
+        .max_gas()
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let res = ft_contract
+        .call("ft_transfer")
+        .args_json((alice.id(), transfer_amount, Option::<bool>::None))
+        .max_gas()
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let ft_contract_balance = ft_contract
+        .call("ft_balance_of")
+        .args_json((ft_contract.id(),))
+        .view()
+        .await?
+        .json::<U128>()?;
+    let alice_balance = ft_contract
+        .call("ft_balance_of")
+        .args_json((alice.id(),))
+        .view()
+        .await?
+        .json::<U128>()?;
+    assert_eq!(initial_balance.0 - transfer_amount.0, ft_contract_balance.0);
+    assert_eq!(transfer_amount.0, alice_balance.0);
+
+    Ok(())
+}
+
 #[tokio::test]
 async fn transfer_call_with_burned_amount() -> anyhow::Result<()> {
     let initial_balance = U128::from(NearToken::from_near(10000).as_yoctonear());
