@@ -28,10 +28,10 @@ use near_contract_standards::fungible_token::{
 use near_contract_standards::storage_management::{
     StorageBalance, StorageBalanceBounds, StorageManagement,
 };
-use near_sdk::borsh::BorshSerialize;
 use near_sdk::json_types::Base64VecU8;
 use near_sdk::json_types::U128;
 use near_sdk::store::LazyOption;
+use near_sdk::{borsh::BorshSerialize, require};
 use near_sdk::{
     env, log, near, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
 };
@@ -43,6 +43,8 @@ const DATA_IMAGE_SVG_ITLX_ICON: &str = "data:image/svg+xml,%3Csvg version='1.0' 
 pub struct Contract {
     token: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
+    session_vault_id: Option<AccountId>,
+    owner: AccountId,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -85,6 +87,8 @@ impl Contract {
         let mut this = Self {
             token: FungibleToken::new(StorageKey::FungibleToken),
             metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
+            session_vault_id: None,
+            owner: env::signer_account_id(),
         };
         this.token.internal_register_account(&owner_id);
         this.token.internal_deposit(&owner_id, total_supply.into());
@@ -98,18 +102,22 @@ impl Contract {
 
         this
     }
+
+    pub fn set_session_vault_id(&mut self, session_vault_id: AccountId) {
+        require!(env::predecessor_account_id().eq(&self.owner));
+        self.session_vault_id = Some(session_vault_id);
+    }
 }
 
 #[near]
 impl FungibleTokenCore for Contract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
-        let contract_id: AccountId = near_sdk::env::current_account_id();
-        if receiver_id
-            .as_str()
-            .eq_ignore_ascii_case(contract_id.as_str())
-        {
-            env::panic_str("ERR_RECIPIENT_CANNOT_BE_TOKEN_CONTRACT");
+        if let Some(session_vault_id) = self.session_vault_id.as_ref() {
+            assert_ne!(
+                receiver_id, *session_vault_id,
+                "ERR_RECIPIENT_CANNOT_BE_SESSION_VAULT"
+            );
         }
         self.token.ft_transfer(receiver_id, amount, memo)
     }
