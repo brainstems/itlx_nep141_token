@@ -15,6 +15,10 @@ NOTES:
   - To prevent the deployed contract from being modified or deleted, it should not have any access
     keys on its account.
 */
+use base64::{
+    engine::general_purpose::{self, GeneralPurpose},
+    Engine,
+};
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
@@ -24,13 +28,13 @@ use near_contract_standards::fungible_token::{
 use near_contract_standards::storage_management::{
     StorageBalance, StorageBalanceBounds, StorageManagement,
 };
-use near_sdk::borsh::BorshSerialize;
-use near_sdk::collections::LazyOption;
-use near_sdk::json_types::U128;
 use near_sdk::json_types::Base64VecU8;
+use near_sdk::json_types::U128;
+use near_sdk::store::LazyOption;
+use near_sdk::{borsh::BorshSerialize, require};
 use near_sdk::{
-    env, log, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
-}; 
+    env, log, near, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
+};
 
 const DATA_IMAGE_SVG_ITLX_ICON: &str = "data:image/svg+xml,%3Csvg version='1.0' xmlns='http://www.w3.org/2000/svg' width='721.000000pt' height='399.000000pt' viewBox='0 0 721.000000 399.000000' preserveAspectRatio='xMidYMid meet'%3E%3Cg transform='translate(0.000000,399.000000) scale(0.100000,-0.100000)' fill='%23000000' stroke='none'%3E%3Cpath d='M0 1995 l0 -1995 3605 0 3605 0 0 1995 0 1995 -3605 0 -3605 0 0 -1995z m2888 1200 c110 -22 190 -64 252 -132 183 -200 178 -507 -15 -830 -75 -126 -101 -152 -50 -49 163 327 192 597 83 769 -58 91 -160 160 -277 187 -81 19 -231 15 -351 -10 -134 -27 -260 -74 -438 -161 l-143 -71 46 -50 c57 -63 109 -151 137 -231 32 -89 32 -263 1 -362 -70 -221 -249 -381 -473 -421 -129 -23 -268 -7 -325 38 -34 27 -65 92 -65 138 0 83 188 426 362 660 l33 45 -64 -50 c-342 -266 -660 -644 -817 -970 -168 -350 -171 -585 -9 -734 65 -59 135 -87 243 -100 307 -34 733 104 1261 408 60 34 45 14 -42 -57 -438 -358 -1180 -536 -1521 -365 -69 34 -140 111 -167 181 -34 85 -32 269 4 405 66 249 202 520 394 786 9 12 8 31 -3 81 -18 85 -17 229 1 309 38 159 150 298 298 370 178 87 378 93 570 16 l68 -28 97 46 c345 161 680 228 910 182z'/%3E%3C/g%3E%3C/svg%3E";
 
@@ -39,6 +43,8 @@ const DATA_IMAGE_SVG_ITLX_ICON: &str = "data:image/svg+xml,%3Csvg version='1.0' 
 pub struct Contract {
     token: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
+    session_vault_id: Option<AccountId>,
+    owner: AccountId,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -54,6 +60,10 @@ impl Contract {
     /// default metadata (for example purposes only).
     #[init]
     pub fn new_default_meta(owner_id: AccountId, total_supply: U128) -> Self {
+        let engine: GeneralPurpose = general_purpose::STANDARD;
+        let decoded: Vec<u8> = engine
+            .decode("K29udivYwweOUnCZPFt/KhcMmm0DQLvzYoVdKXN41P8=")
+            .expect("ERR_FAILED_TO_DECODE_REFERENCE_HASH");
         Self::new(
             owner_id,
             total_supply,
@@ -63,7 +73,7 @@ impl Contract {
                 symbol: "ITLX".to_string(),
                 icon: Some(DATA_IMAGE_SVG_ITLX_ICON.to_string()),
                 reference: Some("https://raw.githubusercontent.com/brainstems/itlx_nep141_token/refs/heads/master/metadata.json".to_string()),
-                reference_hash: Some(Base64VecU8::from(base64::decode("K29udivYwweOUnCZPFt/KhcMmm0DQLvzYoVdKXN41P8=").unwrap())),
+                reference_hash: Some(Base64VecU8::from(decoded)),
                 decimals: 24,
             },
         )
@@ -73,11 +83,12 @@ impl Contract {
     /// the given fungible token metadata.
     #[init]
     pub fn new(owner_id: AccountId, total_supply: U128, metadata: FungibleTokenMetadata) -> Self {
-        require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
         let mut this = Self {
             token: FungibleToken::new(StorageKey::FungibleToken),
-            metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
+            metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
+            session_vault_id: None,
+            owner: env::signer_account_id(),
         };
         this.token.internal_register_account(&owner_id);
         this.token.internal_deposit(&owner_id, total_supply.into());
@@ -91,12 +102,23 @@ impl Contract {
 
         this
     }
+
+    pub fn set_session_vault_id(&mut self, session_vault_id: AccountId) {
+        require!(env::predecessor_account_id().eq(&self.owner));
+        self.session_vault_id = Some(session_vault_id);
+    }
 }
 
 #[near]
 impl FungibleTokenCore for Contract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
+        if let Some(session_vault_id) = self.session_vault_id.as_ref() {
+            assert_ne!(
+                receiver_id, *session_vault_id,
+                "ERR_RECIPIENT_CANNOT_BE_SESSION_VAULT"
+            );
+        }
         self.token.ft_transfer(receiver_id, amount, memo)
     }
 
@@ -178,7 +200,7 @@ impl StorageManagement for Contract {
 #[near]
 impl FungibleTokenMetadataProvider for Contract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
-        self.metadata.get().unwrap()
+        self.metadata.get().clone().unwrap()
     }
 }
 
@@ -343,7 +365,7 @@ mod tests {
             .attached_deposit(NearToken::from_yoctonear(1))
             .build());
 
-        assert_eq!(contract.storage_unregister(None), true);
+        assert!(contract.storage_unregister(None));
 
         assert!(contract.storage_balance_of(user1()).is_none());
     }
@@ -380,7 +402,7 @@ mod tests {
             .build());
 
         // "false" indicates that the account wasn't registered
-        assert_eq!(contract.storage_unregister(None), false);
+        assert!(!contract.storage_unregister(None));
     }
 
     #[should_panic]
@@ -441,7 +463,7 @@ mod tests {
 
         // force to unregister no matter what
         // this reduces total supply because user's tokens are burnt
-        assert_eq!(contract.storage_unregister(Some(true)), true);
+        assert!(contract.storage_unregister(Some(true)));
 
         assert!(contract.storage_balance_of(user1()).is_none());
         assert_eq!(contract.ft_balance_of(user1()).0, 0);

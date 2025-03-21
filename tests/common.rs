@@ -15,24 +15,23 @@ static FUNGIBLE_TOKEN_CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     })
     .expect("Could not compile Fungible Token contract for tests");
 
-    let contract_wasm = std::fs::read(&artifact.path).expect(
-        format!(
-            "Could not read Fungible Token WASM file from {}",
-            artifact.path
+    std::fs::read(&artifact.path).unwrap_or_else(|err| {
+        panic!(
+            "Could not read Fungible Token WASM file from {}\nErr: {err}",
+            artifact.path,
         )
-        .as_str(),
-    );
-
-    contract_wasm
+    })
 });
 
 static DEFI_CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let artifact_path = "tests/contracts/defi/res/defi.wasm";
 
-    let contract_wasm = std::fs::read(artifact_path)
-        .expect(format!("Could not read DeFi WASM file from {}", artifact_path).as_str());
-
-    contract_wasm
+    std::fs::read(artifact_path).unwrap_or_else(|err| {
+        panic!(
+            "Could not read DeFi WASM file from {}\nErr: {err}",
+            artifact_path
+        )
+    })
 });
 
 pub async fn init_accounts(root: &Account) -> anyhow::Result<(Account, Account, Account, Account)> {
@@ -62,7 +61,7 @@ pub async fn init_accounts(root: &Account) -> anyhow::Result<(Account, Account, 
         .await?
         .into_result()?;
 
-    return Ok((alice, bob, charlie, dave));
+    Ok((alice, bob, charlie, dave))
 }
 
 pub async fn init_contracts(
@@ -99,7 +98,7 @@ pub async fn init_contracts(
         .await?;
     assert!(res.is_success());
 
-    return Ok((ft_contract, defi_contract));
+    Ok((ft_contract, defi_contract))
 }
 
 pub async fn register_user(contract: &Contract, account_id: &AccountId) -> anyhow::Result<()> {
