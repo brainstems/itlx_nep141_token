@@ -58,6 +58,7 @@ enum StorageKey {
 impl Contract {
     /// Initializes the contract with the given total supply owned by the given `owner_id` with
     /// default metadata (for example purposes only).
+    #[private]
     #[init]
     pub fn new_default_meta(owner_id: AccountId, total_supply: U128) -> Self {
         let engine: GeneralPurpose = general_purpose::STANDARD;
@@ -81,6 +82,7 @@ impl Contract {
 
     /// Initializes the contract with the given total supply owned by the given `owner_id` with
     /// the given fungible token metadata.
+    #[private]
     #[init]
     pub fn new(owner_id: AccountId, total_supply: U128, metadata: FungibleTokenMetadata) -> Self {
         metadata.assert_valid();
