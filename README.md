@@ -18,10 +18,10 @@ The Intellex AI Protocol Token (ITLX) is a NEP-141 fungible token on the NEAR Pr
 
 ## Social Media
 
-- Twitter: https://twitter.com/intellex_ai
-- Telegram: https://t.me/intellex_ai
-- GitHub: https://github.com/intellex-ai
-- Medium: https://medium.com/@intellex
+- Twitter: https://twitter.com/intellex_xyz
+- Telegram: https://t.me/intellex_xyz
+- GitHub: https://github.com/brainstems
+- Medium: https://medium.com/intellex-ai
 
 ## Contract Addresses
 
